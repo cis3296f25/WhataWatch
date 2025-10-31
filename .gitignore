@@ -1,3 +1,6 @@
 __pycache__/
+csv_outputs/
+output_csv/
+venv/
 
 .DS_Store

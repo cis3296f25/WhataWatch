@@ -5,25 +5,25 @@ WhataWatch is the solution to movie nights that haven’t had a movie planned. W
 
 
 # How to run
-Provide here instructions on how to use your application.   
-- Download the latest binary from the Release section on the right on GitHub.  
-- On the command line uncompress using
+Make sure you have python installed and run these in your terminal to download the libraries used in the program.
 ```
-tar -xzf  
+pip install -r requirements.txt
+pip install matplotlib numpy pillow
 ```
-- On the command line run with
-```
-./hello
-```
-- You will see Hello World! on your terminal. 
+if you are on a Mac you may need to add a 3 after pip (pip3)
+
+then navigate to ./WhataWatch/letterboxdpy/diary.py to run the program
+
+then a prompt to input a desired username to the terminal and enter
+
+a csv file will be made in ./WhataWatch/letterboxdpy/output_csv
 
 # How to contribute
-Follow this project board to know the latest status of the project: [http://...]([http://...])  
+Follow this project board to know the latest status of the project: https://github.com/orgs/cis3296f25/projects/74
 
 ### How to build
 - Use this github repository: ... 
 - Specify what branch to use for a more stable release or for cutting edge development.  
-- Use InteliJ 11
 - Specify additional library to download if needed 
 - What file and target to compile and run. 
 - What is expected to happen when the app start. 

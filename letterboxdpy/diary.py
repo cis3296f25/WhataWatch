@@ -1,3 +1,7 @@
+'''
+Proof of concept main file
+'''
+
 if __loader__.name == '__main__':
     import sys
     sys.path.append(sys.path[0] + '/..')

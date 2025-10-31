@@ -8,7 +8,6 @@ WhataWatch is the solution to movie nights that haven’t had a movie planned. W
 Make sure you have python installed and run these in your terminal to download the libraries used in the program.
 ```
 pip install -r requirements.txt
-pip install matplotlib numpy pillow
 ```
 if you are on a Mac you may need to add a 3 after pip (pip3)
 

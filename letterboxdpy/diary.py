@@ -13,6 +13,10 @@ from json import (
 from letterboxdpy.core.encoder import SecretsEncoder
 from letterboxdpy.pages import user_diary
 from letterboxdpy.core.exceptions import PrivateRouteError
+from letterboxdpy.core.scraper import parse_url
+from letterboxdpy.movie import Movie
+from letterboxdpy.url import get_stats_url
+from letterboxdpy.utils.utils_parser import extract_numeric_text
 
 
 
@@ -48,6 +52,109 @@ class Diary:
         return self.pages.diary.url
     def get_entries(self) -> dict:
         return self.pages.diary.get_diary()
+
+
+
+
+def _fetch_poster_for_slug(slug: str) -> str:
+    """Fetch the poster image URL for a given film slug using Letterboxd's AJAX poster endpoint.
+
+    Returns the poster URL string or empty string on failure.
+    """
+    if not slug:
+        return ''
+    # First try the AJAX poster endpoint
+    try:
+        poster_ajax = f"https://letterboxd.com/ajax/poster/film/{slug}/std/500x750/"
+        poster_page = parse_url(poster_ajax)
+        if poster_page and getattr(poster_page, 'img', None):
+            srcset = poster_page.img.get('srcset') or poster_page.img.get('src')
+            if srcset:
+                return srcset.split('?')[0]
+    except Exception:
+        # ignore and try fallback
+        pass
+
+    # Fallback: instantiate Movie and ask for its poster (reads movie profile script)
+    try:
+        movie = Movie(slug)
+        poster = movie.get_poster()
+        if poster:
+            return poster.split('?')[0]
+    except Exception:
+        pass
+
+    return ''
+
+
+def _fetch_stats_for_slug(slug: str) -> dict:
+    """Fetch runtime, avg_rating, total_views, total_likes, and genres for a film slug.
+
+    Returns a dict with keys: runtime, avg_rating, total_views, total_likes, genres
+    Values are simple scalars or lists; failures return empty/None values.
+    """
+    out = {
+        'runtime': None,
+        'avg_rating': None,
+        'total_views': None,
+        'total_likes': None,
+        'genres': None,
+    }
+    if not slug:
+        return out
+
+    # First try to fetch stats via CSI stats endpoint
+    try:
+        stats_url = get_stats_url(slug)
+        stats_dom = parse_url(stats_url)
+
+        # The stats page uses divs with aria-labels like
+        # "Watched by 1,419,375 members" and "Liked by 367,289 members".
+        # Prefer extracting the numeric value from the aria-label which has full numbers.
+        stat_divs = stats_dom.find_all('div', class_=lambda x: x and 'production-statistic' in x)
+        for d in stat_divs:
+            aria = (d.get('aria-label') or '').strip()
+            if not aria:
+                # try anchor title fallback
+                a = d.find('a')
+                aria = (a.get('title') if a else '') or aria
+            if not aria:
+                continue
+            lower = aria.lower()
+            if 'watched by' in lower or 'watched' in lower:
+                num = extract_numeric_text(aria)
+                if num is not None:
+                    out['total_views'] = int(num)
+            if 'liked by' in lower or 'liked' in lower:
+                num = extract_numeric_text(aria)
+                if num is not None:
+                    out['total_likes'] = int(num)
+    except Exception:
+        # ignore failures and fallback to Movie
+        pass
+
+    # Fallback to Movie class to get runtime, avg rating and genres
+    try:
+        movie = Movie(slug)
+        if out['runtime'] is None:
+            out['runtime'] = movie.get_runtime()
+        if out['avg_rating'] is None:
+            out['avg_rating'] = movie.get_rating()
+        if out['genres'] is None:
+            genres = movie.get_genres()
+            # genres is a list of dicts; convert to comma-separated names
+            if isinstance(genres, list):
+                out['genres'] = ','.join([g.get('name', '') for g in genres if isinstance(g, dict)])
+            else:
+                out['genres'] = ''
+    except Exception:
+        pass
+
+    # Ensure simple scalars
+    if isinstance(out.get('genres'), list):
+        out['genres'] = ','.join(out['genres'])
+
+    return out
 
 
 if __name__ == "__main__":
@@ -114,7 +221,12 @@ if __name__ == "__main__":
             entries_list = [e for e in entries_list if isinstance(e, dict)]
 
             # Only keep specified headers and flatten nested fields
-            fieldnames = ["name", "slug", "id", "release", "runtime", "rewatched", "rating", "liked", "reviewed", "date"]
+            # Include poster URL and extra movie metadata
+            fieldnames = [
+                "name", "slug", "id", "release",
+                "length", "avg_rating", "total_views", "total_likes", "genres",
+                "runtime", "poster", "rewatched", "rating", "liked", "reviewed", "date"
+            ]
             with open(output_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
@@ -130,12 +242,32 @@ if __name__ == "__main__":
                     else:
                         date_str = str(date_obj) if date_obj else ''
 
+                    # Fetch poster and additional stats/metadata
+                    slug = entry.get('slug', '') or ''
+                    if not entry.get('poster'):
+                        try:
+                            entry['poster'] = _fetch_poster_for_slug(slug)
+                        except Exception:
+                            entry['poster'] = entry.get('poster', '') or ''
+
+                    stats = _fetch_stats_for_slug(slug)
+
+                    # length: human readable runtime, use runtime if available
+                    length = stats.get('runtime') or entry.get('runtime') or ''
+                    avg_rating = stats.get('avg_rating') if stats.get('avg_rating') is not None else actions.get('rating', '')
+
                     row = {
                         'name': entry.get('name', '') or '',
-                        'slug': entry.get('slug', '') or '',
+                        'slug': slug,
                         'id': entry.get('id', '') or '',
                         'release': entry.get('release', '') or '',
+                        'length': length or '',
+                        'avg_rating': avg_rating or '',
+                        'total_views': stats.get('total_views') or '',
+                        'total_likes': stats.get('total_likes') or '',
+                        'genres': stats.get('genres') or '',
                         'runtime': entry.get('runtime', '') or '',
+                        'poster': entry.get('poster', '') or '',
                         'rewatched': actions.get('rewatched', ''),
                         'rating': actions.get('rating', ''),
                         'liked': actions.get('liked', ''),
@@ -151,11 +283,11 @@ if __name__ == "__main__":
                         else:
                             row[k] = str(v)
                     writer.writerow(row)
-            print(f"✅ Diary saved to: {output_path}")
+            print(f" Diary saved to: {output_path}")
         else:
-            print("⚠️ No entries found.")
+            print(" No entries found.")
     except PrivateRouteError:
         print(f"Error: User's diary is private.")
     except Exception as e:
-        print(f"⚠️ Failed to save diary to CSV: {e}")
-        print(f"⚠️ Failed to save diary to CSV: {e}")
+        print(f" Failed to save diary to CSV: {e}")
+        print(f" Failed to save diary to CSV: {e}")

@@ -5,6 +5,8 @@ if __loader__.name == '__main__':
 import re
 import os
 import csv
+import glob
+import webbrowser
 from json import (
     dumps as json_dumps,
     loads as json_loads
@@ -157,6 +159,76 @@ def _fetch_stats_for_slug(slug: str) -> dict:
     return out
 
 
+def open_first_image_from_csv(csv_path: str = None, username: str = None) -> str:
+    """Open the first image link (poster) from a diary CSV in the default browser.
+
+    If `csv_path` is provided it will be used. Otherwise the function will look in
+    the module's `output_csv` directory for `diary_{username}.csv` when a username
+    is passed, or the most recent `diary_*.csv` file.
+
+    Returns the URL opened (string) on success, or raises FileNotFoundError/ValueError
+    on failure.
+    """
+    output_dir = os.path.join(os.path.dirname(__file__), 'output_csv')
+
+    # Resolve csv path
+    if csv_path:
+        path = csv_path
+    else:
+        if username:
+            path = os.path.join(output_dir, f'diary_{username}.csv')
+        else:
+            # pick newest diary_*.csv
+            pattern = os.path.join(output_dir, 'diary_*.csv')
+            matches = glob.glob(pattern)
+            if not matches:
+                raise FileNotFoundError(f'No diary CSV files found in {output_dir}')
+            # choose most recently modified
+            path = max(matches, key=os.path.getmtime)
+
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f'CSV file not found: {path}')
+
+    # Read CSV and find poster column
+    with open(path, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        header = reader.fieldnames or []
+        # prefer exact 'poster' column name, otherwise look for a header containing 'poster' or 'image'
+        poster_col = None
+        for h in header:
+            if h and h.lower() == 'poster':
+                poster_col = h
+                break
+        if not poster_col:
+            for h in header:
+                if h and ('poster' in h.lower() or 'image' in h.lower()):
+                    poster_col = h
+                    break
+
+        if not poster_col:
+            raise ValueError(f'No poster/image column found in CSV: {path}')
+
+        # find first non-empty poster URL
+        first_url = None
+        for row in reader:
+            url = (row.get(poster_col) or '').strip()
+            if url:
+                first_url = url
+                break
+
+    if not first_url:
+        raise ValueError(f'No poster URL found in column "{poster_col}" of {path}')
+
+    # Open in default browser
+    try:
+        webbrowser.open(first_url, new=2)
+    except Exception as e:
+        # still return the URL for caller to handle
+        raise RuntimeError(f'Failed to open URL {first_url}: {e}')
+
+    return first_url
+
+
 if __name__ == "__main__":
     import argparse
     import sys
@@ -166,6 +238,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch a user's diary.")
     parser.add_argument('--user', '-u', help="Username to fetch diary for", required=False)
     parser.add_argument('--debug', action='store_true', help='Print debug info about first diary entry')
+    parser.add_argument('--open-poster', action='store_true', help='Open first poster image in browser after saving CSV')
     args = parser.parse_args()
 
     username = args.user or input('Enter username: ').strip()
@@ -284,6 +357,12 @@ if __name__ == "__main__":
                             row[k] = str(v)
                     writer.writerow(row)
             print(f" Diary saved to: {output_path}")
+            if args.open_poster:
+                try:
+                    url = open_first_image_from_csv(csv_path=output_path)
+                    print(f" Opening poster URL in browser: {url}")
+                except Exception as e:
+                    print(f" Failed to open poster URL: {e}")
         else:
             print(" No entries found.")
     except PrivateRouteError:
@@ -291,3 +370,73 @@ if __name__ == "__main__":
     except Exception as e:
         print(f" Failed to save diary to CSV: {e}")
         print(f" Failed to save diary to CSV: {e}")
+
+
+    def open_first_image_from_csv(csv_path: str = None, username: str = None) -> str:
+        """Open the first image link (poster) from a diary CSV in the default browser.
+
+        If `csv_path` is provided it will be used. Otherwise the function will look in
+        the module's `output_csv` directory for `diary_{username}.csv` when a username
+        is passed, or the most recent `diary_*.csv` file.
+
+        Returns the URL opened (string) on success, or raises FileNotFoundError/ValueError
+        on failure.
+        """
+        output_dir = os.path.join(os.path.dirname(__file__), 'output_csv')
+
+        # Resolve csv path
+        if csv_path:
+            path = csv_path
+        else:
+            if username:
+                path = os.path.join(output_dir, f'diary_{username}.csv')
+            else:
+                # pick newest diary_*.csv
+                pattern = os.path.join(output_dir, 'diary_*.csv')
+                matches = glob.glob(pattern)
+                if not matches:
+                    raise FileNotFoundError(f'No diary CSV files found in {output_dir}')
+                # choose most recently modified
+                path = max(matches, key=os.path.getmtime)
+
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f'CSV file not found: {path}')
+
+        # Read CSV and find poster column
+        with open(path, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            header = reader.fieldnames or []
+            # prefer exact 'poster' column name, otherwise look for a header containing 'poster' or 'image'
+            poster_col = None
+            for h in header:
+                if h and h.lower() == 'poster':
+                    poster_col = h
+                    break
+            if not poster_col:
+                for h in header:
+                    if h and ('poster' in h.lower() or 'image' in h.lower()):
+                        poster_col = h
+                        break
+
+            if not poster_col:
+                raise ValueError(f'No poster/image column found in CSV: {path}')
+
+            # find first non-empty poster URL
+            first_url = None
+            for row in reader:
+                url = (row.get(poster_col) or '').strip()
+                if url:
+                    first_url = url
+                    break
+
+        if not first_url:
+            raise ValueError(f'No poster URL found in column "{poster_col}" of {path}')
+
+        # Open in default browser
+        try:
+            webbrowser.open(first_url, new=2)
+        except Exception as e:
+            # still return the URL for caller to handle
+            raise RuntimeError(f'Failed to open URL {first_url}: {e}')
+
+        return first_url

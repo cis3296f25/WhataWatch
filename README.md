@@ -12,11 +12,15 @@ pip install matplotlib numpy pillow
 ```
 if you are on a Mac you may need to add a 3 after pip (pip3)
 
-then navigate to ./WhataWatch/letterboxdpy/diary.py to run the program
-
-then a prompt to input a desired username to the terminal and enter
+```
+python ./GitHub/WhataWatch/letterboxdpy/diary.py --user [username] --open-poster
+```
 
 a csv file will be made in ./WhataWatch/letterboxdpy/output_csv
+
+and the program will show your most recent watch
+
+
 
 # How to contribute
 Follow this project board to know the latest status of the project: https://github.com/orgs/cis3296f25/projects/74

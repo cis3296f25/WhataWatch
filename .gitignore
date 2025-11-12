@@ -4,3 +4,5 @@ output_csv/
 venv/
 
 .DS_Store
+*.sqlite3
+*.zip

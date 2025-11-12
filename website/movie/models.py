@@ -8,7 +8,7 @@ class Movie(models.Model):
     movie_id = models.IntegerField(unique=True)
     name = models.CharField(max_length=100)
     slug = models.CharField(max_length=100)
-    users_rating = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    users_rating = models.DecimalField(max_digits=2, decimal_places=1, blank=True, null=True)
     total_views = models.IntegerField(blank=True, null=True)
     total_likes = models.IntegerField(blank=True, null=True)
     directors = models.ManyToManyField(Director, related_name='movies', blank=True)

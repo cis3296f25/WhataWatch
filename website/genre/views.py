@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from django.views.generic import ListView
+from .models import Genre
 
-# Create your views here.
+class GenreListView(ListView):
+    model = Genre
+    template_name = 'genre_list.html'
+    context_object_name = 'genres'
+    ordering = ['name']

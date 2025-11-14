@@ -5,20 +5,7 @@ WhataWatch is the solution to movie nights that haven’t had a movie planned. W
 
 
 # How to run
-Make sure you have python installed and run these in your terminal to download the libraries used in the program.
-```
-pip install -r requirements.txt
-pip install matplotlib numpy pillow
-```
-if you are on a Mac you may need to add a 3 after pip (pip3)
-
-```
-python ./GitHub/WhataWatch/letterboxdpy/diary.py --user [username] --open-poster
-```
-
-a csv file will be made in ./WhataWatch/letterboxdpy/output_csv
-
-and the program will show your most recent watch
+Open this link - https://whatawatch.pythonanywhere.com/ 
 
 
 

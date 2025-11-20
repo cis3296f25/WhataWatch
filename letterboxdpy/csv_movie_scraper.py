@@ -39,26 +39,37 @@ def scrape_movie_data(slug: str) -> Dict[str, Any]:
         Dictionary with keys: director, runtime, rating, views, genres
         Values are strings suitable for CSV output.
     """
+    # Return the exact fields required for the output CSV
     data = {
-        'director': '',
+        'name': '',
+        'slug': slug,
+        'id': '',
+        'poster': '',
         'runtime': '',
-        'rating': '',
+        'director': '',
+        'users_rating': '',
         'views': '',
+        'total_likes': '',
         'genres': ''
     }
     
     try:
         movie = Movie(slug)
-        
-        # Get runtime
+
+        # Basic fields
+        name = movie.get_title()
+        movie_id = movie.get_id()
+        poster = movie.get_poster()
         runtime = movie.get_runtime()
+        users_rating = movie.get_rating()
+
+        data['name'] = name or ''
+        data['id'] = str(movie_id) if movie_id else ''
+        data['poster'] = poster or ''
         data['runtime'] = str(runtime) if runtime else ''
-        
-        # Get average rating
-        rating = movie.get_rating()
-        data['rating'] = str(rating) if rating else ''
-        
-        # Get genres as comma-separated string
+        data['users_rating'] = str(users_rating) if users_rating is not None else ''
+
+        # Genres
         genres_list = movie.get_genres()
         if isinstance(genres_list, list) and genres_list:
             genre_names = []
@@ -68,24 +79,18 @@ def scrape_movie_data(slug: str) -> Dict[str, Any]:
                 elif isinstance(genre, str):
                     genre_names.append(genre)
             data['genres'] = ','.join(filter(None, genre_names))
-        
-        # Get director from crew - try multiple approaches
+
+        # Director(s)
         director = None
         try:
             crew = movie.get_crew()
             if isinstance(crew, dict):
-                # Try 'directors' key first
-                directors = crew.get('directors', [])
-                if not directors:
-                    # Try 'director' (singular)
-                    directors = crew.get('director', [])
-                
+                directors = crew.get('directors') or crew.get('director') or []
                 if isinstance(directors, list) and directors:
                     director_names = []
                     for director_item in directors:
                         if isinstance(director_item, dict):
-                            # Try 'name' or other common keys
-                            name = director_item.get('name') or director_item.get('title') or str(director_item)
+                            name = director_item.get('name') or director_item.get('title')
                             if name:
                                 director_names.append(name)
                         elif isinstance(director_item, str):
@@ -94,19 +99,35 @@ def scrape_movie_data(slug: str) -> Dict[str, Any]:
                         director = ','.join(filter(None, director_names))
         except Exception:
             pass
-        
+
         if director:
             data['director'] = director
-        
-        # Get watchers/views stats
+
+        # Watchers / members stats -> views and total_likes
         try:
             watchers_stats = movie.get_watchers_stats()
             if isinstance(watchers_stats, dict):
-                # Look for 'watched by' key which contains view count
-                for key in watchers_stats.keys():
-                    if 'watched' in key.lower():
-                        data['views'] = str(watchers_stats[key])
-                        break
+                # collect numeric candidates and likes separately
+                views_candidates = []
+                for key, val in watchers_stats.items():
+                    try:
+                        # val should already be an int from extract_numeric_text
+                        if isinstance(val, int):
+                            views_candidates.append(val)
+                        else:
+                            # try to coerce numeric-like strings
+                            v = int(str(val))
+                            views_candidates.append(v)
+                    except Exception:
+                        pass
+
+                    kl = key.lower()
+                    if 'like' in kl or 'liked' in kl:
+                        data['total_likes'] = str(val)
+
+                # prefer the largest numeric watcher stat as total views (best-effort)
+                if views_candidates:
+                    data['views'] = str(max(views_candidates))
         except Exception:
             pass
         
@@ -156,61 +177,78 @@ def scrape_movies_from_csv(
         
         rows = list(reader)
     
-    # Define output fieldnames: original fields + new enriched fields
-    output_fieldnames = list(reader.fieldnames) + ['director', 'runtime', 'rating', 'views', 'genres']
+    # Define output fieldnames (fixed): only keep the requested columns
+    # Add `list_count` so the output is aggregated per-slug rather than repeated per input row
+    output_fieldnames = ['name', 'slug', 'list_count', 'id', 'poster', 'runtime', 'director', 'users_rating', 'views', 'total_likes', 'genres']
     
-    # Load already-scraped slugs from output file
-    already_scraped: Set[str] = set()
+    # Load existing output rows (if any) so we can merge/update rather than duplicate
+    existing_rows: Dict[str, Dict[str, str]] = {}
     if os.path.isfile(output_csv):
         try:
             with open(output_csv, 'r', newline='', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    slug = (row.get(slug_column) or '').strip()
-                    if slug:
-                        already_scraped.add(slug)
+                    slug_val = (row.get(slug_column) or row.get('slug') or '').strip()
+                    if slug_val:
+                        # normalize row values to strings
+                        existing_rows[slug_val] = {k: (v if v is not None else '') for k, v in row.items()}
         except Exception as e:
             if verbose:
                 print(f"Warning: Could not read existing output file: {e}")
     
-    # Filter rows to only those not already scraped
-    rows_to_process = [r for r in rows if (r.get(slug_column) or '').strip() not in already_scraped]
+    # Count occurrences per slug in the input (so we can aggregate rather than produce per-entry rows)
+    from collections import Counter
+    slug_counts = Counter()
+    for r in rows:
+        s = (r.get(slug_column) or '').strip()
+        if s:
+            slug_counts[s] += 1
+
+    # Filter slugs to only those not already present in existing output
+    slugs_to_process = [s for s in slug_counts.keys() if s not in existing_rows]
     
     if verbose:
-        print(f"Found {len(rows)} movies total, {len(already_scraped)} already scraped, {len(rows_to_process)} to process.")
-    
-    if not rows_to_process:
+        print(f"Found {len(rows)} movies total, {len(existing_rows)} already in output, {len(slugs_to_process)} unique to process.")
+
+    if not slugs_to_process:
         if verbose:
             print("All movies already scraped!")
         return
     
-    # Scrape data and append to output CSV
-    file_exists = os.path.isfile(output_csv)
-    
-    with open(output_csv, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=output_fieldnames)
-        
-        # Write header only if file is new
-        if not file_exists:
-            writer.writeheader()
-        
-        for idx, row in enumerate(rows_to_process, 1):
-            slug = (row.get(slug_column) or '').strip()
-            
-            if not slug:
-                if verbose:
-                    print(f"[{idx}/{len(rows_to_process)}] Skipping row with empty slug")
-                continue
-            
+    # Merge: update counts for existing rows and scrape only new slugs
+    # Update existing rows' list_count by adding occurrences from this input
+    for s, count in slug_counts.items():
+        if s in existing_rows:
+            existing_count = 0
+            try:
+                existing_count = int(existing_rows[s].get('list_count', '0') or 0)
+            except Exception:
+                existing_count = 0
+            existing_rows[s]['list_count'] = str(existing_count + count)
+
+    # Scrape new slugs and add to existing_rows
+    for idx, slug in enumerate(slugs_to_process, 1):
+        if not slug:
             if verbose:
-                print(f"[{idx}/{len(rows_to_process)}] Scraping: {slug}")
-            
-            # Scrape movie data
-            movie_data = scrape_movie_data(slug)
-            
-            # Merge original row with new data
-            enriched_row = {**row, **movie_data}
-            writer.writerow(enriched_row)
+                print(f"[{idx}/{len(slugs_to_process)}] Skipping empty slug")
+            continue
+
+        if verbose:
+            print(f"[{idx}/{len(slugs_to_process)}] Scraping: {slug}")
+
+        movie_data = scrape_movie_data(slug)
+        movie_data['list_count'] = str(slug_counts.get(slug, 0))
+        # normalize to string values
+        existing_rows[slug] = {k: (str(movie_data.get(k, '')) if movie_data.get(k, '') is not None else '') for k in output_fieldnames}
+
+    # Write merged output (overwrite) so file stays de-duplicated and counts are up-to-date
+    with open(output_csv, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=output_fieldnames)
+        writer.writeheader()
+        for slug_key, row in existing_rows.items():
+            # Ensure we write only the expected columns in order
+            out_row = {k: row.get(k, '') for k in output_fieldnames}
+            writer.writerow(out_row)
     
     if verbose:
         print(f"✓ Scraping complete! Data appended to: {output_csv}")

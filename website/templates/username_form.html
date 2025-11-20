@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Enter Username{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Enter a Username</h1>
+
+<form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    <input 
+        type="text" 
+        name="username" 
+        placeholder="Type your username"
+        class="px-4 py-2 rounded-md bg-slate-700 border border-white/10 w-full"
+        required
+    />
+
+    <button 
+        type="submit"
+        class="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-700 transition"
+    >
+        Submit
+    </button>
+</form>
+
+{% if username %}
+    <p class="mt-6 text-lg">You entered: 
+        <span class="font-semibold text-indigo-400">{{ username }}</span>
+    </p>
+{% endif %}
+{% endblock %}

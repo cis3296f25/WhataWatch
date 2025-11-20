@@ -267,11 +267,11 @@ if __name__ == "__main__":
     
     # Example Letterboxd data format (this would come from your letterboxdpy module)
     example_user_data = [
-        {'title': 'The Shawshank Redemption', 'year': 1994, 'rating': 5.0},
-        {'title': 'The Dark Knight', 'year': 2008, 'rating': 4.5},
-        {'title': 'Inception', 'year': 2010, 'rating': 5.0},
-        {'title': 'Pulp Fiction', 'year': 1994, 'rating': 4.5},
-        {'title': 'Fight Club', 'year': 1999, 'rating': 4.0},
+        {'title': 'Gladiator', 'year': 2000, 'rating': 5.0},
+        {'title': 'Interstellar', 'year': 2014, 'rating': 5.0},
+        {'title': 'American Gangster', 'year': 2007, 'rating': 5.0},
+        {'title': 'Inglourious Basterds', 'year': 2009, 'rating': 5.0},
+        {'title': 'Kingdom of Heaven', 'year': 2005, 'rating': 4.0},
     ]
     
     # Get recommendations

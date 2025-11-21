@@ -7,6 +7,8 @@ WhataWatch is the solution to movie nights that haven’t had a movie planned. W
 # How to run
 Open this link - https://whatawatch.pythonanywhere.com/ 
 
+click on the letterboxd link in the top right, type a letterboxd username (ie. forkbender84) click import
+
 
 
 # How to contribute

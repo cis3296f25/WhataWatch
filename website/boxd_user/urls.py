@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import username_view
+from .views import import_letterboxd_view
 
 urlpatterns = [
-    path("", username_view, name="username_input"),
+    path("", import_letterboxd_view, name="letterboxd"),
 ]

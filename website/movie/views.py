@@ -30,16 +30,16 @@ class MovieListView(ListView):
         # Ordering
         order = (self.request.GET.get('order') or '').lower()
         if order == 'rating':
-            qs = qs.order_by('-users_rating', '-total_views', 'name')
+            qs = qs.order_by('-ratings', '-total_views', 'name')
         elif order == 'views':
-            qs = qs.order_by('-total_views', '-users_rating', 'name')
+            qs = qs.order_by('-total_views', '-ratings', 'name')
         elif order == 'likes':
-            qs = qs.order_by('-total_likes', '-users_rating', 'name')
+            qs = qs.order_by('-total_likes', '-ratings', 'name')
         elif order == 'name':
             qs = qs.order_by('name')
         else:
             # default ordering: popular first (by rating then views)
-            qs = qs.order_by('-users_rating', '-total_views', 'name')
+            qs = qs.order_by('-ratings', '-total_views', 'name')
 
         return qs
 

@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.http import HttpResponseBadRequest
 
 from movie.models import Movie
-from utils import extractors
+from utils import extractors, recommendation_engine as engine
 from director.models import Director
 from genre.models import Genre
 
@@ -153,7 +153,6 @@ async def fetch_and_save_all(films, concurrency=6):
 
                 await save_movie_from_data(details.copy())
 
-                # Prepare thin dict for template
                 saved_movies.append(details)
 
         tasks = [asyncio.create_task(worker(f)) for f in films]
@@ -166,7 +165,12 @@ async def fetch_and_save_all(films, concurrency=6):
     return saved_movies
 
 
-# The async view that handles GET (show form) and POST (scrape)
+@sync_to_async
+def get_movies_from_db_by_ids(movie_ids):
+    qs = Movie.objects.filter(movie_id__in=movie_ids)
+    return list(qs)
+
+
 async def import_letterboxd_view(request):
     if request.method == 'GET':
         return render(request, 'username_form.html')
@@ -176,19 +180,53 @@ async def import_letterboxd_view(request):
         if not username:
             return HttpResponseBadRequest('username required')
 
-        # 1) scrape the user's watched film list pages until exhausted
+        # Scrape the user's watched film list pages until exhausted
         films, pages_scraped = await scrape_all_watched(username, concurrency=6)
 
-        # 2) fetch each film detail and save to DB
-        saved_movies = await fetch_and_save_all(films, concurrency=6)
+        # Fetch each film detail and save to DB
+        # saved_movies = await fetch_and_save_all(films, concurrency=6)
 
-        scraping_info = {
-            'pages_scraped': pages_scraped,
-            'found': len(films),
-            'movies': saved_movies,
+        movie_ids = [f['id'] for f in films]
+        recommendations = []
+        recommender_error = None
+
+        try:
+            # Query DB for the movies we just scraped
+            db_movies = await get_movies_from_db_by_ids(movie_ids)
+
+            # build letterboxd_data list of dicts: name, year, ratings
+            letterboxd_data = []
+            for m in db_movies:
+                name = getattr(m, 'name', None)
+                year = getattr(m, 'year', None)
+                ratings = getattr(m, 'ratings', None)
+                letterboxd_data.append({'slug': m.slug, 'name': name, 'year': year, 'ratings': ratings})
+
+            recommender = engine.MovieRecommender()
+            recs_df = recommender.get_recommendations(letterboxd_data, n_recommendations=12, min_popularity=50)
+
+            try:
+                recommendations = recs_df.fillna('').to_dict(orient='records')
+            except Exception:
+                if hasattr(recs_df, 'to_dict'):
+                    recommendations = recs_df.to_dict()
+                else:
+                    recommendations = []
+
+        except Exception as e:
+            # don't fail the whole request; surface error to template
+            logger.exception('Recommender failed for username %s: %s', username, e)
+            recommender_error = str(e)
+
+        context = {
+            'username': username,
+            'recommendations': recommendations,
+            'recommender_error': recommender_error,
         }
 
-        return render(request, 'username_form.html', {'username': username, 'scraping_info': scraping_info})
+        print(recommendations[0])
+
+        return render(request, 'username_form.html', context)
 
     # other methods not allowed
     return HttpResponseBadRequest('Method not allowed')

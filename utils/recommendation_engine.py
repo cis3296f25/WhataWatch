@@ -7,6 +7,7 @@ import re
 
 
 class MovieRecommender:
+    COL_SLUG = 'slug'
     COL_NAME = 'name'
     COL_YEAR = 'year'
     COL_LENGTH = 'length'
@@ -15,7 +16,7 @@ class MovieRecommender:
     COL_POPULARITY = 'total_likes'
     COL_POSTER = 'poster_url'
 
-    def __init__(self, csv_path='movies.csv'):
+    def __init__(self, csv_path='utils/movies.csv'):
         self.movies_df = pd.read_csv(csv_path, dtype={self.COL_NAME: str})
         self._preprocess_data()
 
@@ -242,7 +243,7 @@ class MovieRecommender:
 
         # keep friendly output columns
         out = top[[
-            self.COL_NAME, self.COL_YEAR, 'genre_list', self.COL_LENGTH,
+            self.COL_SLUG, self.COL_NAME, self.COL_YEAR, 'genre_list', self.COL_LENGTH,
             self.COL_RATING, self.COL_POPULARITY, self.COL_POSTER, 'recommendation_score'
         ]].reset_index(drop=True)
 

@@ -1,7 +1,9 @@
 __pycache__/
 csv_outputs/
 output_csv/
+.ropeproject/
 venv/
+
 
 .DS_Store
 *.sqlite3

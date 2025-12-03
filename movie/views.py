@@ -1,6 +1,8 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, DetailView
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from .models import Movie
 from genre.models import Genre
@@ -13,10 +15,7 @@ class MovieListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        qs = (
-            Movie.objects.all()
-            .prefetch_related('genres', 'directors')
-        )
+        qs = Movie.objects.all().prefetch_related('genres', 'directors')
 
         # Search
         q = self.request.GET.get('q')
@@ -52,6 +51,7 @@ class MovieListView(ListView):
         return ctx
 
 
+@method_decorator(cache_page(60 * 15), name='dispatch') # Cache for 15 minutes
 class MovieDetailView(DetailView):
     model = Movie
     template_name = 'movie_detail.html'

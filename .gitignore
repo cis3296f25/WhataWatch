@@ -2,6 +2,7 @@ __pycache__/
 csv_outputs/
 output_csv/
 .ropeproject/
+staticfiles/
 venv/
 
 .DS_Store

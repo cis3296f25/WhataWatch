@@ -4,11 +4,34 @@ WhataWatch is the solution to movie nights that haven’t had a movie planned. W
 <img width="316" height="531" alt="Screenshot 2025-10-28 at 11 29 39" src="https://github.com/user-attachments/assets/5d61feb3-0c3a-42bd-97bc-4dbd1f37da58" />
 
 
-# How to run
-Open this link - https://whatawatch.pythonanywhere.com/ 
+# How to Run
 
-click on the letterboxd link in the top right, type a letterboxd username (ie. forkbender84) click import
+The production version is hosted on **PythonAnywhere**:
 
+👉 **https://whatawatch.pythonanywhere.com/**
+
+1. Open the link above  
+2. Click the **Recommender** tab in the top-right  
+3. Enter a Letterboxd username (example: "forkbender84" - a working username we have already tested)  
+4. Click **Import**  
+5. View your personalized recommendations  
+
+
+# What it does
+WhataWatch uses a custom recommendation model built with:
+- Letterboxd Data Scraping
+- Django Database
+- Custom Scoring/Weighting System 
+- PythonAnywhere Website
+
+The system:
+1. Pulls user’s logged movies from Letterboxd  
+2. Builds a preference profile  
+3. Compares it to a pre-processed movie dataset  
+4. Recommends movies that:
+   - match the users liked movies  
+   - align with their watch preferences  
+   - are not already logged/watched  
 
 
 # How to contribute

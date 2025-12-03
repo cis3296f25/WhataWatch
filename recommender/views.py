@@ -171,9 +171,9 @@ def get_movies_from_db_by_ids(movie_ids):
     return list(qs)
 
 
-async def import_letterboxd_view(request):
+async def recommender_view(request):
     if request.method == 'GET':
-        return render(request, 'username_form.html')
+        return render(request, 'recommender.html')
 
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
@@ -224,9 +224,7 @@ async def import_letterboxd_view(request):
             'recommender_error': recommender_error,
         }
 
-        print(recommendations[0])
-
-        return render(request, 'username_form.html', context)
+        return render(request, 'recommender.html', context)
 
     # other methods not allowed
     return HttpResponseBadRequest('Method not allowed')

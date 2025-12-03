@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 class BoxdUserConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'boxd_user'
+    name = 'recommender'

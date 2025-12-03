@@ -27,10 +27,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # my apps
-    'boxd_user',
     'director',
     'genre',
     'movie',
+    'recommender',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load movie_extras %}
+{% block title %}{{ movie.name }} — WhataWatch{% endblock %}
+
+{% block content %}
+<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+  <!-- Poster -->
+  <div class="md:col-span-1">
+    <div class="rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-800 to-slate-900">
+      {% if movie.poster_url %}
+        <img src="{{ movie.poster_url }}" alt="{{ movie.name }}" class="w-full h-auto object-cover" loading="lazy" />
+      {% else %}
+        <div class="w-full h-96 flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800 text-gray-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M7 7V5a2 2 0 012-2h6a2 2 0 012 2v2" />
+          </svg>
+        </div>
+      {% endif %}
+
+      <div class="p-4 flex gap-3 items-center justify-between">
+        <div>
+          <h2 class="font-extrabold text-2xl leading-tight text-white">{{ movie.name }}</h2>
+          <p class="text-sm text-gray-400 mt-1">{{ movie.genres.all|join:", " }}</p>
+        </div>
+
+        <div class="text-right">
+          <div class="text-xs text-gray-400">Users rating</div>
+          <div class="text-2xl font-bold text-white">{{ movie.users_rating|default:"—" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 space-y-3">
+      <div class="glass p-3 rounded-xl">
+        <div class="text-xs text-gray-400">Length</div>
+        <div class="font-semibold text-white">{{ movie.length|default:"—" }} minutes</div>
+      </div>
+
+      <div class="glass p-3 rounded-xl">
+        <div class="text-xs text-gray-400">Stats</div>
+        <div class="flex gap-6 mt-3 items-center">
+          <div class="text-sm">
+            <div class="text-gray-400 text-xs">Views</div>
+            <div class="font-semibold text-white">{{ movie.total_views|default:0|humanize_count }}</div>
+          </div>
+          <div class="text-sm">
+            <div class="text-gray-400 text-xs">Likes</div>
+            <div class="font-semibold text-white">{{ movie.total_likes|default:0|humanize_count }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info / main column -->
+  <div class="md:col-span-2">
+    <div class="glass p-6 rounded-3xl shadow-xl">
+      <div class="flex items-start gap-6">
+        <div class="flex-1">
+          <div class="flex items-center gap-4">
+            <h3 class="text-2xl md:text-3xl font-extrabold text-white">{{ movie.name }}</h3>
+
+            <div class="ml-3 px-3 py-1 rounded-full bg-white/5 text-sm text-gray-200">
+              {% for g in movie.genres.all %}
+                <span class="inline-block px-2 py-1 rounded-md text-xs font-medium bg-white/6 mr-2 text-gray-100">{{ g.name }}</span>
+              {% empty %}
+                <span class="text-xs text-gray-400">No genres</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <div class="text-xs text-gray-400">Directed by</div>
+            <div class="mt-1 text-sm text-gray-200">
+              {% for d in movie.directors.all %}
+                <span class="inline-flex items-center mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M12 14l6.16-3.422A12 12 0 0112 21.5 12 12 0 015.84 10.578L12 14z" />
+                  </svg>
+                  {{ d.name }}
+                </span>
+              {% empty %}
+                <span class="text-gray-400">Unknown</span>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <div class="text-xs text-gray-400">User rating</div>
+            <div class="mt-2">
+              <!-- rating now uses a 0..5 scale -->
+              <div class="rating-track w-full h-3 rounded-md p-0" style="--rating:{{ movie.users_rating|default:0 }};">
+                <div class="rating-fill" style="width: calc((var(--rating, 0) / 5) * 100%);"></div>
+              </div>
+              <div class="flex items-center justify-between mt-2 text-xs text-gray-400">
+                <div>{{ movie.users_rating|default:"—" }} / 5</div>
+                <div>based on user votes</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 border-t border-white/5 pt-6 text-gray-300">
+        <h4 class="font-semibold text-white">Synopsis</h4>
+        <p class="mt-2 text-sm text-gray-300">
+          {{ movie.description }}
+        </p>
+
+        <div class="mt-6">
+          <h5 class="text-sm text-gray-400 uppercase tracking-wide">Genres & Tags</h5>
+          <div class="mt-3 flex flex-wrap gap-2">
+            {% for g in movie.genres.all %}
+              <span class="px-3 py-1 rounded-full bg-white/6 text-xs text-gray-100">{{ g.name }}</span>
+            {% empty %}
+              <span class="text-gray-400">No genres listed</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
